@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/gorilla/websocket"
 )
@@ -65,7 +66,16 @@ func setupRoutes() {
 }
 
 func main() {
-	fmt.Println("Chatting backend server")
+	fmt.Println("Starting server...")
+	// Determine port for HTTP service.
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "5000"
+		log.Printf("Defaulting to port %s", port)
+	}
 	setupRoutes()
-	http.ListenAndServe(":8080", nil)
+	fmt.Println("Chatting backend server is listening on port " + port + ".")
+	if err := http.ListenAndServe(":"+port, nil); err != nil {
+		log.Fatal(err)
+	}
 }

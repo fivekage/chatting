@@ -36,10 +36,9 @@ func reader(conn *websocket.Conn) {
 		fmt.Println(string(p))
 
 		if err := conn.WriteMessage(messageType, p); err != nil {
-			log.Println(err)
+			log.Println("aa ", err)
 			return
 		}
-
 	}
 }
 
@@ -74,7 +73,7 @@ func main() {
 		log.Printf("Defaulting to port %s", port)
 	}
 	setupRoutes()
-	fmt.Println("Chatting backend server is listening on port " + port + ".")
+	log.Println("Chatting backend server is listening on port " + port + ".")
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatal(err)
 	}

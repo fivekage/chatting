@@ -9,23 +9,32 @@ import (
 )
 
 // define our WebSocket endpoint
-func serveWs(w http.ResponseWriter, r *http.Request) {
-	log.Println(r.Host)
+func serveWs(pool *websocket.Pool, w http.ResponseWriter, r *http.Request) {
+	log.Println("WebSocket reached on", r.Host)
 
 	// upgrade this connection to a WebSocket connection
-	ws, err := websocket.Upgrade(w, r)
+	conn, err := websocket.Upgrade(w, r)
 	if err != nil {
 		log.Println(w, "%+V\n", err)
 	}
-	// listen indefinitely for new messages coming
-	// through on our WebSocket connection
-	go websocket.Writer(ws)
-	websocket.Reader(ws)
+
+	client := &websocket.Client{
+		Conn: conn,
+		Pool: pool,
+	}
+
+	pool.Register <- client
+	client.Read()
 }
 
 func setupRoutes() {
+	pool := websocket.NewPool()
+	go pool.Start()
+
 	// map our "/ws" endpoint to the "serveWs" function
-	http.HandleFunc("/ws", serveWs)
+	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		serveWs(pool, w, r)
+	})
 }
 
 func main() {

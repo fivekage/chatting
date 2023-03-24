@@ -41,9 +41,14 @@ func main() {
 	log.Println("Starting server...")
 	// Determine port for HTTP service.
 	port := os.Getenv("PORT")
+	apiBaseUrl := os.Getenv("API_BASE_URL")
 	if port == "" {
 		port = "5000"
 		log.Printf("Defaulting to port %s", port)
+	}
+	if apiBaseUrl == "" {
+		apiBaseUrl = "http://localhost:5001"
+		log.Printf("Defaulting API BASE URL %s", apiBaseUrl)
 	}
 	setupRoutes()
 	log.Println("Chatting backend server is listening on port " + port + ".")

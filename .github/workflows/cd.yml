@@ -51,7 +51,6 @@ jobs:
           service: ${{ env.SERVICE }}
           region: ${{ env.REGION }}
           flags: "--allow-unauthenticated"
-          revision_traffic: "100"
           # NOTE: If using a pre-built image, update the image name here
           image: ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ secrets.GAR_REPOSITORY }}/${{ secrets.GAR_IMAGE }}:${{ github.sha }}
 

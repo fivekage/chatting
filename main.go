@@ -4,7 +4,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-
 	"github.com/fivekage/stay.chatting/pkg/websocket"
 )
 
@@ -20,6 +19,7 @@ func serveWs(pool *websocket.Pool, w http.ResponseWriter, r *http.Request) {
 
 	client := &websocket.Client{
 		ID:   r.URL.Query().Get("id"),
+		Token:   r.URL.Query().Get("token"),
 		Conn: conn,
 		Pool: pool,
 	}

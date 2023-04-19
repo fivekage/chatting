@@ -39,7 +39,7 @@ func setupRoutes() {
 }
 
 func main() {
-	log.Println("Starting server...")
+	log.Println("Starting server... version 0.2")
 	// Determine port for HTTP service.
 	port := os.Getenv("PORT")
 	apiBaseUrl := os.Getenv("API_BASE_URL")

@@ -4,7 +4,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+
 	"github.com/fivekage/stay.chatting/pkg/websocket"
+	"github.com/joho/godotenv"
 )
 
 // define our WebSocket endpoint
@@ -18,10 +20,10 @@ func serveWs(pool *websocket.Pool, w http.ResponseWriter, r *http.Request) {
 	}
 
 	client := &websocket.Client{
-		ID:   r.URL.Query().Get("id"),
-		Token:   r.URL.Query().Get("token"),
-		Conn: conn,
-		Pool: pool,
+		ID:    r.URL.Query().Get("id"),
+		Token: r.URL.Query().Get("token"),
+		Conn:  conn,
+		Pool:  pool,
 	}
 
 	pool.Register <- client
@@ -40,6 +42,10 @@ func setupRoutes() {
 
 func main() {
 	log.Println("Starting server... version 0.2")
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
 	// Determine port for HTTP service.
 	port := os.Getenv("PORT")
 	apiBaseUrl := os.Getenv("API_BASE_URL")

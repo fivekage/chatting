@@ -1,21 +1,21 @@
 package websocket
 
 import (
-	"os"
+	"bytes"
 	"encoding/json"
 	"log"
-	"time"
 	"net/http"
-	"net/url"
-	"strings"
+	"os"
+	"time"
+
 	"github.com/gorilla/websocket"
 )
 
 type Client struct {
-	ID   string
+	ID    string
 	Token string
-	Conn *websocket.Conn
-	Pool *Pool
+	Conn  *websocket.Conn
+	Pool  *Pool
 }
 
 type MsgBody struct {
@@ -54,41 +54,45 @@ func (c *Client) Read() {
 		c.Pool.Broadcast <- message
 		log.Printf("Message Received: %+v\n", message)
 
-		// historizeMessage(body, c)
 		historizeMessage(body, c)
 	}
 }
 
-
 func historizeMessage(body MsgBody, c *Client) {
+	// Build the request body as a JSON object
+	bodyData := map[string]interface{}{
+		"message":     body.Content,
+		"writedAt":    time.Now().Format("2006-01-02T15:04:05.000Z"),
+		"writedBy":    body.UserID,
+		"chatRoomUid": body.RoomID,
+	}
+	bodyBytes, err := json.Marshal(bodyData)
+	if err != nil {
+		// Handle Error
+		log.Fatalf("An error occurred during building request %v", err)
+	}
 
-	//Build the request
-	data := url.Values{}
-    data.Set("message", "body.Content")
-	data.Set("writedAt", string(time.Now().UnixMilli()))
-	data.Set("writedBy", body.UserID)
-	data.Set("chatRoomUid", body.RoomID)
+	// Build the request
+	client := http.Client{}
+	var apiBaseUrl = os.Getenv("API_BASE_URL")
+	var apiUrl = apiBaseUrl + "message/chatroom"
+	req, err := http.NewRequest(http.MethodPost, apiUrl, bytes.NewReader(bodyBytes))
+	if err != nil {
+		// Handle Error
+		log.Fatalf("An error occurred during building request %v", err)
+	}
 
-	
-	 client := http.Client{}
-	 var API_BASE_URL = os.Getenv("API_BASE_URL")
-	 var apiUrl = API_BASE_URL + "message/chatroom"
-	 req , err := http.NewRequest(http.MethodPost, apiUrl, strings.NewReader(data.Encode()))
-	 if err != nil {
-		 //Handle Error
-		 log.Fatalf("An Error Occured during building request %v", err)
+	// Set the request headers
+	req.Header = http.Header{
+		"Content-Type":  {"application/json"},
+		"Authorization": {"Bearer " + c.Token},
+	}
 
-	 }
-	 
-	 req.Header = http.Header{
-		 "Content-Type": {"application/json"},
-		 "Authorization": {"Bearer " + c.Token},
-	 }
-
-	 res , err := client.Do(req)
-	 if err != nil {
-		 //Handle Error
-		 log.Fatalf("An Error Occured during request%v", err)
-	 }
-	 log.Printf(res.Status)
+	// Send the request
+	res, err := client.Do(req)
+	if err != nil {
+		// Handle Error
+		log.Fatalf("An error occurred during sending request %v", err)
+	}
+	defer res.Body.Close()
 }

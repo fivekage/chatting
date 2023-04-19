@@ -22,34 +22,35 @@ func (pool *Pool) Start() {
 	for {
 		select {
 		case client := <-pool.Register:
+			var message = client.ID + " joined"
 			pool.Clients[client] = true
-			log.Println("Size of Connection Pool: ", len(pool.Clients))
-			for client := range pool.Clients {
-				log.Println(client)
-				client.Conn.WriteJSON(SocketMessage{
-					Type: 1, Body: MsgBody{
-						Content:     "New user joined...",
-						ContentType: "text",
-						UserID:      "system"}})
-			}
+			informClients(message, pool)
 		case client := <-pool.Unregister:
+			var message = client.ID + " left"
 			delete(pool.Clients, client)
-			log.Println("Size of Connection Pool: ", len(pool.Clients))
-			for client, _ := range pool.Clients {
-				client.Conn.WriteJSON(SocketMessage{
-					Type: 1, Body: MsgBody{
-						Content:     "User disconnected...",
-						ContentType: "text",
-						UserID:      "system"}})
-			}
+			informClients(message, pool)
 		case message := <-pool.Broadcast:
-			log.Println("Sending message to all clients in Pool")
+			//log.Println("Sending message to all clients in Pool")
 			for client := range pool.Clients {
 				if err := client.Conn.WriteJSON(message); err != nil {
-					log.Println(err)
+					log.Println("Error :", err)
 					return
 				}
 			}
 		}
+	}
+}
+
+// informClients sends a message to all clients in
+// the pool when a new client joins or leaves
+func informClients(message string, pool *Pool) {
+	log.Println("Size of Connection Pool: ", len(pool.Clients))
+	//log.Println(message)
+	for client := range pool.Clients {
+		client.Conn.WriteJSON(SocketMessage{
+			Type: 1, Body: MsgBody{
+				Content:     message,
+				ContentType: "text",
+				UserID:      "system"}})
 	}
 }

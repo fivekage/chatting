@@ -41,6 +41,7 @@ func (c *Client) Read() {
 		}
 
 		// Parse the message into our MsgBody struct.
+		// TODO: Handle errors correctly.
 		err = json.Unmarshal(p, &body)
 
 		message := SocketMessage{Type: messageType, Body: body}

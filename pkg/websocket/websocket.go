@@ -4,7 +4,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-
 	"github.com/gorilla/websocket"
 )
 
@@ -20,6 +19,7 @@ var upgrader = websocket.Upgrader{
 	// For now, we won't check anything and just allow any connection
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
+
 
 func Upgrade(w http.ResponseWriter, r *http.Request) (*websocket.Conn, error) {
 	ws, err := upgrader.Upgrade(w, r, nil)

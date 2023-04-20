@@ -13,8 +13,10 @@ COPY . ./
 RUN go build -o /docker-app
 
 FROM alpine:latest as production 
-COPY --from=build /docker-app /docker-app
 
+WORKDIR /app
+COPY --from=build /docker-app /docker-app
+COPY .env /app
 ARG API_BASE_URL=http://localhost:5001
 
 ENV PORT=8080

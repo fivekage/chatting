@@ -47,8 +47,12 @@ func (c *Client) Read() {
 		}
 
 		// Parse the message into our MsgBody struct.
-		// TODO: Handle errors correctly.
+		// TOFIX: Handle errors correctly.
 		err = json.Unmarshal(p, &body)
+		if err != nil {
+			log.Println(err)
+			return
+		}
 
 		message := SocketMessage{Type: messageType, Body: body}
 		c.Pool.Broadcast <- message

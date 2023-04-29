@@ -62,6 +62,7 @@ func historizeMessage(body MsgBody, c *Client) {
 	// Build the request body as a JSON object
 	bodyData := map[string]interface{}{
 		"message":     body.Content,
+		"contentType": body.ContentType,
 		"writedAt":    time.Now().Format("2006-01-02T15:04:05.000Z"),
 		"writedBy":    body.UserID,
 		"chatRoomUid": body.RoomID,

@@ -44,7 +44,6 @@ func (pool *Pool) Start() {
 // the pool when a new client joins or leaves
 func informClients(message string, pool *Pool) {
 	log.Println("Size of Connection Pool: ", len(pool.Clients))
-	//log.Println(message)
 	for client := range pool.Clients {
 		client.Conn.WriteJSON(SocketMessage{
 			Type: 1, Body: MsgBody{

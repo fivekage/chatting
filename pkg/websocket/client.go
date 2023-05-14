@@ -11,11 +11,27 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// constants for better communication management
+const (
+	// Max wait time when writing message to peer
+	writeWait = 10 * time.Second
+
+	// Max time till next pong from peer
+	pongWait = 60 * time.Second
+
+	// Send ping interval, must be less then pong wait time
+	pingPeriod = (pongWait * 9) / 10
+
+	// Maximum message size allowed from peer.
+	maxMessageSize = 10000
+)
+
 type Client struct {
 	ID    string
 	Token string
 	Conn  *websocket.Conn
 	Pool  *Pool
+	Send  chan []SocketMessage
 }
 
 type MsgBody struct {
@@ -30,11 +46,66 @@ type SocketMessage struct {
 	Body MsgBody `json:"body"`
 }
 
+func (c *Client) Write() {
+	ticker := time.NewTicker(pingPeriod)
+	defer func() {
+		ticker.Stop()
+		c.Conn.Close()
+	}()
+	for {
+		select {
+		case message, ok := <-c.Send:
+			c.Conn.SetWriteDeadline(time.Now().Add(writeWait))
+			if !ok {
+				// The pool closed the channel.
+				c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
+				return
+			}
+
+			w, err := c.Conn.NextWriter(websocket.TextMessage)
+			if err != nil {
+				return
+			}
+
+			var msg []byte
+			msg, err = json.Marshal(message)
+			if err != nil {
+				return
+			}
+			w.Write(msg)
+
+			// Attach queued chat messages to the current websocket message.
+			var queuedMsg []byte
+			n := len(c.Send)
+			for i := 0; i < n; i++ {
+				queuedMsg, err = json.Marshal(<-c.Send)
+				if err != nil {
+					return
+				}
+				w.Write(queuedMsg)
+			}
+
+			if err := w.Close(); err != nil {
+				return
+			}
+		case <-ticker.C:
+			c.Conn.SetWriteDeadline(time.Now().Add(writeWait))
+			if err := c.Conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				return
+			}
+		}
+	}
+}
+
 func (c *Client) Read() {
 	defer func() {
 		c.Pool.Unregister <- c
 		c.Conn.Close()
 	}()
+
+	c.Conn.SetReadLimit(maxMessageSize)
+	c.Conn.SetReadDeadline(time.Now().Add(pongWait))
+	c.Conn.SetPongHandler(func(string) error { c.Conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 
 	// Declare a new MsgBody struct.
 	var body MsgBody
@@ -42,8 +113,10 @@ func (c *Client) Read() {
 	for {
 		messageType, p, err := c.Conn.ReadMessage()
 		if err != nil {
-			log.Println(err)
-			return
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				log.Printf("unexpected close error: %v", err)
+			}
+			break
 		}
 
 		// Parse the message into our MsgBody struct.

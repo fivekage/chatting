@@ -10,8 +10,8 @@ import (
 // We'll need to define an Upgrader.
 // This will require a Read and Write buffer size
 var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
+	ReadBufferSize:  4096,
+	WriteBufferSize: 4096,
 
 	// We'll need to check the origin of our connection.
 	// This will allow us to make requests from our

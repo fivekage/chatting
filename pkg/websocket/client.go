@@ -12,10 +12,11 @@ import (
 )
 
 type Client struct {
-	ID    string
-	Token string
-	Conn  *websocket.Conn
-	Pool  *Pool
+	ID     string
+	Token  string
+	RoomID string
+	Conn   *websocket.Conn
+	Pool   *Pool
 }
 
 type MsgBody struct {
@@ -64,8 +65,8 @@ func historizeMessage(body MsgBody, c *Client) {
 		"message":     body.Content,
 		"contentType": body.ContentType,
 		"writedAt":    time.Now().Format("2006-01-02T15:04:05.000Z"),
-		"writedBy":    body.UserID,
-		"chatRoomUid": body.RoomID,
+		"writedBy":    c.ID,
+		"chatRoomUid": c.RoomID,
 	}
 	bodyBytes, err := json.Marshal(bodyData)
 	if err != nil {

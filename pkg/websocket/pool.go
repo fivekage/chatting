@@ -6,7 +6,8 @@ type Pool struct {
 	Register   chan *Client
 	Unregister chan *Client
 	Clients    map[*Client]bool
-	Broadcast  chan SocketMessage
+	Broadcast  chan MsgBody
+	Rooms      map[*Room]bool
 }
 
 func NewPool() *Pool {
@@ -14,7 +15,8 @@ func NewPool() *Pool {
 		Register:   make(chan *Client),
 		Unregister: make(chan *Client),
 		Clients:    make(map[*Client]bool),
-		Broadcast:  make(chan SocketMessage),
+		Broadcast:  make(chan MsgBody),
+		Rooms:      make(map[*Room]bool),
 	}
 }
 
@@ -45,10 +47,29 @@ func (pool *Pool) Start() {
 func informClients(message string, pool *Pool) {
 	log.Println("Size of Connection Pool: ", len(pool.Clients))
 	for client := range pool.Clients {
-		client.Conn.WriteJSON(SocketMessage{
-			Type: 1, Body: MsgBody{
-				Content:     message,
-				ContentType: "text",
-				UserID:      "system"}})
+		client.Conn.WriteJSON(MsgBody{
+			Content:     message,
+			ContentType: "text",
+			UserID:      "system"})
 	}
+}
+
+func (server *Pool) findRoomByName(name string) *Room {
+	var foundRoom *Room
+	for room := range server.Rooms {
+		if room.GetName() == name {
+			foundRoom = room
+			break
+		}
+	}
+
+	return foundRoom
+}
+
+func (server *Pool) createRoom(name string) *Room {
+	room := NewRoom(name)
+	go room.RunRoom()
+	server.Rooms[room] = true
+
+	return room
 }

@@ -31,19 +31,8 @@ type Client struct {
 	Token string
 	Conn  *websocket.Conn
 	Pool  *Pool
-	Send  chan []SocketMessage
-}
-
-type MsgBody struct {
-	Content     string `json:"content"`
-	ContentType string `json:"content_type"`
-	UserID      string `json:"user_id"`
-	RoomID      string `json:"room_id"`
-}
-
-type SocketMessage struct {
-	Type int     `json:"type"`
-	Body MsgBody `json:"body"`
+	Send  chan []byte
+	Rooms map[*Room]bool
 }
 
 func (c *Client) Write() {
@@ -100,6 +89,10 @@ func (c *Client) Write() {
 func (c *Client) Read() {
 	defer func() {
 		c.Pool.Unregister <- c
+		for room := range c.Rooms {
+			room.Unregister <- c
+		}
+		close(c.Send)
 		c.Conn.Close()
 	}()
 
@@ -107,27 +100,17 @@ func (c *Client) Read() {
 	c.Conn.SetReadDeadline(time.Now().Add(pongWait))
 	c.Conn.SetPongHandler(func(string) error { c.Conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 
-	// Declare a new MsgBody struct.
-	var body MsgBody
-
 	for {
-		messageType, p, err := c.Conn.ReadMessage()
+		_, p, err := c.Conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("unexpected close error: %v", err)
+				log.Printf("Unexpected close error: %v", err)
 			}
 			break
 		}
 
-		// Parse the message into our MsgBody struct.
-		// TODO: Handle errors correctly.
-		err = json.Unmarshal(p, &body)
-
-		message := SocketMessage{Type: messageType, Body: body}
-		c.Pool.Broadcast <- message
-		log.Printf("Message Received: %+v\n", message)
-
-		historizeMessage(body, c)
+		c.handleNewMessage(p)
+		log.Printf("Message Received: %+v\n", p)
 	}
 }
 
@@ -169,4 +152,58 @@ func historizeMessage(body MsgBody, c *Client) {
 		log.Fatalf("An error occurred during sending request %v", err)
 	}
 	defer res.Body.Close()
+}
+
+func (client *Client) handleNewMessage(jsonMessage []byte) {
+	var message Message
+	if err := json.Unmarshal(jsonMessage, &message); err != nil {
+		log.Printf("Error on unmarshal JSON message %s", err)
+	}
+
+	var body MsgBody
+	if err := json.Unmarshal([]byte(message.Message), &body); err != nil {
+		log.Printf("Error on unmarshal JSON message body %s", err)
+	}
+
+	historizeMessage(body, client)
+
+	switch message.Action {
+	case SendMessageAction:
+		roomName := message.Target
+		if room := client.Pool.findRoomByName(roomName); room != nil {
+			room.Broadcast <- &message
+		}
+
+	case JoinRoomAction:
+		client.handleJoinRoomMessage(message)
+
+	case LeaveRoomAction:
+		client.handleLeaveRoomMessage(message)
+	}
+}
+
+func (client *Client) handleJoinRoomMessage(message Message) {
+	roomName := message.Message
+
+	room := client.Pool.findRoomByName(roomName)
+	if room == nil {
+		room = client.Pool.createRoom(roomName)
+	}
+
+	client.Rooms[room] = true
+
+	room.Register <- client
+}
+
+func (client *Client) handleLeaveRoomMessage(message Message) {
+	room := client.Pool.findRoomByName(message.Message)
+	if _, ok := client.Rooms[room]; ok {
+		delete(client.Rooms, room)
+	}
+
+	room.Unregister <- client
+}
+
+func (client *Client) GetID() string {
+	return client.ID
 }

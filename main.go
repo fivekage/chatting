@@ -24,7 +24,8 @@ func serveWs(pool *websocket.Pool, w http.ResponseWriter, r *http.Request) {
 		Token: r.URL.Query().Get("token"),
 		Conn:  conn,
 		Pool:  pool,
-		Send:  make(chan []websocket.SocketMessage, 256),
+		Send:  make(chan []byte, 256),
+		Rooms: make(map[*websocket.Room]bool),
 	}
 
 	go client.Write()
@@ -44,7 +45,7 @@ func setupRoutes() {
 }
 
 func main() {
-	log.Println("Starting server... version 0.3")
+	log.Println("Starting server... version 0.4")
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")

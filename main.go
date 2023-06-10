@@ -20,10 +20,11 @@ func serveWs(pool *websocket.Pool, w http.ResponseWriter, r *http.Request) {
 	}
 
 	client := &websocket.Client{
-		ID:    r.URL.Query().Get("id"),
-		Token: r.URL.Query().Get("token"),
-		Conn:  conn,
-		Pool:  pool,
+		ID:     r.URL.Query().Get("id"),
+		Token:  r.URL.Query().Get("token"),
+		RoomID: r.URL.Query().Get("room_id"),
+		Conn:   conn,
+		Pool:   pool,
 	}
 
 	pool.Register <- client
@@ -41,7 +42,7 @@ func setupRoutes() {
 }
 
 func main() {
-	log.Println("Starting server... version 0.2")
+	log.Println("Starting server... version 0.4")
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
